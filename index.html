@@ -210,14 +210,26 @@
 				var carousel = document.getElementById('image-carousel');
 				if(!carousel) return;
 				var slidesContainer = carousel.querySelector('.carousel-slides');
+				var viewport = carousel.querySelector('.carousel-viewport');
 				var slides = Array.prototype.slice.call(slidesContainer.querySelectorAll('img'));
 				var prev = document.getElementById('carousel-prev');
 				var next = document.getElementById('carousel-next');
 				var home = document.getElementById('carousel-home');
 				var index = 0;
-				function show(i){
+				var baseTranslate = 0;
+				var isDragging = false;
+				var dragStartX = 0;
+				var activePointer = null;
+				var dragThreshold = 50;
+				var viewportClassTarget = viewport || slidesContainer;
+				slides.forEach(function(img){ img.setAttribute('draggable','false'); });
+
+				function setTransform(x, animate){
+					slidesContainer.style.transition = animate === false ? 'none' : '';
+					slidesContainer.style.transform = 'translateX(' + x + 'px)';
+				}
+				function show(i, opts){
 					index = (i + slides.length) % slides.length;
-					var viewport = carousel.querySelector('.carousel-viewport');
 					var viewportWidth = viewport.getBoundingClientRect().width;
 					var slide = slides[index];
 					var slideWidth = slide.getBoundingClientRect().width;
@@ -226,15 +238,57 @@
 					// desired left position so the slide is centered in the viewport
 					var desiredLeft = (viewportWidth - slideWidth) / 2;
 					var translateX = desiredLeft - slideLeft;
-					slidesContainer.style.transform = 'translateX(' + translateX + 'px)';
+					baseTranslate = translateX;
+					var animate = !(opts && opts.animate === false);
+					setTransform(translateX, animate);
 					// aria/current
 					slides.forEach(function(s,idx){ s.setAttribute('aria-hidden', idx===index ? 'false' : 'true'); });
 				}
+
+				function pointerX(e){ return e.clientX; }
+				function endDrag(delta){
+					isDragging = false;
+					activePointer = null;
+					viewportClassTarget.classList.remove('is-dragging');
+					setTransform(baseTranslate, false);
+					if(Math.abs(delta) > dragThreshold){
+						delta < 0 ? show(index+1) : show(index-1);
+					}else{
+						show(index);
+					}
+				}
+
+				slidesContainer.addEventListener('pointerdown', function(e){
+					if(e.button !== 0 && e.pointerType === 'mouse') return;
+					isDragging = true;
+					activePointer = e.pointerId;
+					dragStartX = pointerX(e);
+					viewportClassTarget.classList.add('is-dragging');
+					setTransform(baseTranslate, false);
+					if(slidesContainer.setPointerCapture && e.pointerId != null){
+						slidesContainer.setPointerCapture(e.pointerId);
+					}
+				});
+
+				slidesContainer.addEventListener('pointermove', function(e){
+					if(!isDragging || (activePointer !== null && e.pointerId !== activePointer)) return;
+					var delta = pointerX(e) - dragStartX;
+					setTransform(baseTranslate + delta, false);
+					e.preventDefault();
+				});
+
+				['pointerup','pointercancel','pointerleave'].forEach(function(evt){
+					slidesContainer.addEventListener(evt, function(e){
+						if(!isDragging || (activePointer !== null && e.pointerId !== activePointer)) return;
+						var delta = pointerX(e) - dragStartX;
+						endDrag(delta);
+					});
+				});
 				prev.addEventListener('click', function(){ show(index-1); });
 				next.addEventListener('click', function(){ show(index+1); });
 				home.addEventListener('click', function(){ show(0); });
 				// initial
-				window.addEventListener('load', function(){ show(0); });
+				window.addEventListener('load', function(){ show(0, { animate:false }); });
 			})();
 			</script>
 
