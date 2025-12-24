@@ -105,6 +105,12 @@
 							</button>
 						</div>
 					</div>
+					<div id="carousel-lightbox" class="carousel-lightbox" aria-hidden="true">
+						<button class="lightbox-close" aria-label="Cerrar visor"><span class="material-symbols-outlined">close</span></button>
+						<button class="lightbox-nav lightbox-prev" aria-label="Anterior"><span class="material-symbols-outlined">arrow_back_ios</span></button>
+						<img alt="Vista ampliada" />
+						<button class="lightbox-nav lightbox-next" aria-label="Siguiente"><span class="material-symbols-outlined">arrow_forward_ios</span></button>
+					</div>
 				</section>
 			</header>
 
@@ -215,12 +221,28 @@
 				var prev = document.getElementById('carousel-prev');
 				var next = document.getElementById('carousel-next');
 				var home = document.getElementById('carousel-home');
+				var lightbox = document.getElementById('carousel-lightbox');
+				var lightboxImg = lightbox ? lightbox.querySelector('img') : null;
+				var lightboxClose = lightbox ? lightbox.querySelector('.lightbox-close') : null;
+				var lightboxPrev = lightbox ? lightbox.querySelector('.lightbox-prev') : null;
+				var lightboxNext = lightbox ? lightbox.querySelector('.lightbox-next') : null;
 				var index = 0;
 				var baseTranslate = 0;
 				var isDragging = false;
 				var dragStartX = 0;
 				var activePointer = null;
 				var dragThreshold = 50;
+				var dragMoved = false;
+				var lightboxOpen = false;
+				var lbDragging = false;
+				var lbDragged = false;
+				var lbStartX = 0;
+				var lbPointerId = null;
+				var lbJustSwiped = false;
+				function markLbSwiped(){
+					lbJustSwiped = true;
+					setTimeout(function(){ lbJustSwiped = false; }, 220);
+				}
 				var viewportClassTarget = viewport || slidesContainer;
 				slides.forEach(function(img){ img.setAttribute('draggable','false'); });
 
@@ -243,6 +265,7 @@
 					setTransform(translateX, animate);
 					// aria/current
 					slides.forEach(function(s,idx){ s.setAttribute('aria-hidden', idx===index ? 'false' : 'true'); });
+					if(lightboxOpen) updateLightboxImage();
 				}
 
 				function pointerX(e){ return e.clientX; }
@@ -261,6 +284,7 @@
 				slidesContainer.addEventListener('pointerdown', function(e){
 					if(e.button !== 0 && e.pointerType === 'mouse') return;
 					isDragging = true;
+					dragMoved = false;
 					activePointer = e.pointerId;
 					dragStartX = pointerX(e);
 					viewportClassTarget.classList.add('is-dragging');
@@ -273,6 +297,7 @@
 				slidesContainer.addEventListener('pointermove', function(e){
 					if(!isDragging || (activePointer !== null && e.pointerId !== activePointer)) return;
 					var delta = pointerX(e) - dragStartX;
+					if(Math.abs(delta) > 5) dragMoved = true;
 					setTransform(baseTranslate + delta, false);
 					e.preventDefault();
 				});
@@ -284,6 +309,71 @@
 						endDrag(delta);
 					});
 				});
+
+				function openLightbox(){
+					if(!lightbox || !lightboxImg) return;
+					lightboxOpen = true;
+					updateLightboxImage();
+					lightbox.setAttribute('aria-hidden','false');
+					document.body.style.overflow = 'hidden';
+				}
+				function closeLightbox(){
+					if(!lightbox) return;
+					lightboxOpen = false;
+					lightbox.setAttribute('aria-hidden','true');
+					document.body.style.overflow = '';
+				}
+				function updateLightboxImage(){ if(lightboxImg) lightboxImg.src = slides[index].src; }
+				if(lightbox){
+					lightbox.addEventListener('click', function(e){
+						if(lbDragged || lbJustSwiped){ lbDragged = false; e.preventDefault(); e.stopPropagation(); return; }
+						if(e.target === lightbox) closeLightbox();
+					});
+				}
+				if(lightboxClose){
+					lightboxClose.addEventListener('click', function(){ closeLightbox(); });
+				}
+				if(lightboxPrev){
+					lightboxPrev.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); show(index-1); });
+				}
+				if(lightboxNext){
+					lightboxNext.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); show(index+1); });
+				}
+				window.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeLightbox(); });
+				window.addEventListener('keydown', function(e){ if(!lightboxOpen) return; if(e.key === 'ArrowLeft') { e.preventDefault(); show(index-1); } if(e.key === 'ArrowRight') { e.preventDefault(); show(index+1); } });
+				if(lightbox){
+					lightbox.addEventListener('pointerdown', function(e){
+						var target = e.target;
+						if(target !== lightbox && target !== lightboxImg) return;
+						lbDragging = true;
+						lbDragged = false;
+						lbPointerId = e.pointerId;
+						lbStartX = e.clientX;
+						if(lightbox.setPointerCapture && e.pointerId != null) lightbox.setPointerCapture(e.pointerId);
+						e.preventDefault();
+					});
+					lightbox.addEventListener('pointermove', function(e){
+						if(!lbDragging || (lbPointerId !== null && e.pointerId !== lbPointerId)) return;
+						var delta = e.clientX - lbStartX;
+						if(Math.abs(delta) > 6) lbDragged = true;
+						if(Math.abs(delta) > dragThreshold){
+							lbDragging = false;
+							lbPointerId = null;
+							markLbSwiped();
+							delta < 0 ? show(index+1) : show(index-1);
+						}
+						e.preventDefault();
+					});
+					['pointerup','pointercancel','pointerleave'].forEach(function(evt){
+						lightbox.addEventListener(evt, function(e){
+							if(lbPointerId !== null && e.pointerId !== lbPointerId) return;
+							lbDragging = false;
+							lbPointerId = null;
+							lbDragged = false;
+						});
+					});
+				}
+				viewport.addEventListener('click', function(e){ if(dragMoved || isDragging) { e.preventDefault(); return; } openLightbox(); });
 				prev.addEventListener('click', function(){ show(index-1); });
 				next.addEventListener('click', function(){ show(index+1); });
 				home.addEventListener('click', function(){ show(0); });
