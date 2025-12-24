@@ -34,6 +34,29 @@
 				</div>
 			</section> -->
 
+		<!-- Teaser Modal -->
+		<div id="teaser-modal" class="teaser-modal" style="display: none;">
+			<div class="teaser-modal-content">
+				<button class="teaser-close-btn" aria-label="Cerrar" title="Cerrar">
+					<span class="material-symbols-outlined">close</span>
+				</button>
+				<video id="teaser-video" class="teaser-video" controls>
+					<source src="assets/Teaser Ecos del algoritmo.mp4" type="video/mp4">
+					Tu navegador no soporta video HTML5.
+				</video>
+				<div class="teaser-play-btn-container" id="teaser-play-container" style="display: flex;">
+					<button class="teaser-play-btn" id="teaser-play-btn" aria-label="Reproducir video">
+						<span class="material-symbols-outlined">play_arrow</span>
+					</button>
+				</div>
+				<div class="teaser-start-btn-container" id="teaser-start-container" style="display: none;">
+					<button class="teaser-start-btn" id="teaser-start-btn" aria-label="Comenzar">
+						Comenzar
+					</button>
+				</div>
+			</div>
+		</div>
+
 		<!-- Wrapper -->
 			<div id="wrapper">
 
@@ -42,7 +65,7 @@
 						<div class="inner">
 								<h1 class="orbitron" style="color:#00c3ff;">Ecos del algoritmo</h1>
 								<!-- Botón de audio (esquina superior derecha) -->
-								<!--<button id="audio-toggle" class="button fixed-topright" aria-pressed="false" aria-label="Silenciar audio" data-audio-src="assets/audio/Hypervirtua_-_Esgi.mp3">
+								<button id="audio-toggle" class="button fixed-topright" aria-pressed="false" aria-label="Silenciar audio" data-audio-src="assets/audio/Hypervirtua_-_Esgi.mp3">
 									<span id="audio-icon" class="material-symbols-outlined" aria-hidden="true">volume_up</span>
 								</button>
 
@@ -138,24 +161,25 @@
 				}
 				function updateIcon(muted){
 					// try both methods to ensure rendering
-					icon.textContent = muted ? 'volume_up' : 'volume_off';
+					icon.textContent = muted ? 'volume_off' : 'volume_up';
 					icon.innerText = icon.textContent;
 					icon.classList.add('material-symbols-outlined');
-					btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+					btn.setAttribute('aria-pressed', muted ? 'false' : 'true');
 					btn.setAttribute('aria-label', muted ? 'Activar audio' : 'Silenciar audio');
 				}
-				// estado inicial
+				// estado inicial: mantener el audio en silencio hasta que el usuario pulse "Comenzar"
 				var audio = ensureAudio();
 				var hasAudio = !!audio;
-				// intentar autoplay audible; si se bloquea, reproducir silenciado
+				// iniciar en mute para evitar reproducción inesperada
 				if(hasAudio){
-					audio.muted = false;
+					audio.muted = true;
 					// asegurar volumen al 50% antes de intentar reproducir
 					audio.volume = 0.5;
+					// intentar reproducir en silencio para cumplir políticas de autoplay
 					audio.play().then(function(){
-						updateIcon(false);
+						updateIcon(true);
 					}).catch(function(){
-						// autoplay bloqueado: reproducir en silencio
+						// si falla, seguir en silencio
 						audio.muted = true;
 						audio.volume = 0.5;
 						audio.play().catch(function(){});

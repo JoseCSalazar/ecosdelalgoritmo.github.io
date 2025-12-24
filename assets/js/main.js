@@ -229,4 +229,87 @@
 				}
 			});
 
+	// Teaser Modal functionality
+		var $modal = $('#teaser-modal');
+		var $video = $('#teaser-video');
+		var $playBtn = $('#teaser-play-btn');
+		var $closeBtn = $('.teaser-close-btn');
+		var $playContainer = $('#teaser-play-container');
+		var $startBtn = $('#teaser-start-btn');
+		var $startContainer = $('#teaser-start-container');
+
+		// Function to unmute and play background audio
+		function unmuteBackgroundAudio() {
+			(function(){
+				var pageAudio = document.getElementById('page-audio');
+				var audioToggleBtn = document.getElementById('audio-toggle');
+				var audioIcon = document.getElementById('audio-icon');
+				var src = audioToggleBtn ? audioToggleBtn.dataset.audioSrc : null;
+				if(!pageAudio && src){
+					pageAudio = document.createElement('audio');
+					pageAudio.id = 'page-audio';
+					pageAudio.src = src;
+					pageAudio.preload = 'auto';
+					pageAudio.loop = true;
+					pageAudio.volume = 0.5;
+					pageAudio.style.display = 'none';
+					document.body.appendChild(pageAudio);
+				}
+				if(pageAudio){
+					pageAudio.muted = false;
+					pageAudio.play().catch(function(){});
+					if(audioToggleBtn && audioIcon){
+						audioToggleBtn.setAttribute('aria-pressed', 'false');
+						audioIcon.textContent = 'volume_up';
+						audioIcon.innerText = audioIcon.textContent;
+					}
+				}
+			})();
+		}
+
+		// Show modal on page load
+		$(window).on('load', function() {
+			window.setTimeout(function() {
+				$modal.fadeIn(300);
+			}, 500);
+		});
+
+		// Close button functionality
+		$closeBtn.on('click', function() {
+			unmuteBackgroundAudio();
+			closeTeaseModal();
+		});
+
+		// Play button functionality
+		$playBtn.on('click', function() {
+			$video[0].play();
+			$playContainer.fadeOut(300);
+		});
+
+		// Start button functionality (shown after video ends)
+		$startBtn.on('click', function() {
+			unmuteBackgroundAudio();
+			closeTeaseModal();
+			// Scroll to the image carousel section
+			$('html, body').animate({
+				scrollTop: $('#image-carousel').offset().top
+			}, 1000);
+		});
+
+		// Handle video ended event
+		$video.on('ended', function() {
+			$playContainer.fadeOut(300);
+			$startContainer.fadeIn(300);
+		});
+
+		// Function to close the modal
+		function closeTeaseModal() {
+			$modal.fadeOut(300, function() {
+				$video[0].pause();
+				$video[0].currentTime = 0;
+				$playContainer.show();
+				$startContainer.hide();
+			});
+		}
+
 })(jQuery);
